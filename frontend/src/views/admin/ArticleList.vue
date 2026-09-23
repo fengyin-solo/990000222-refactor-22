@@ -50,9 +50,11 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import api from '../../api'
+import { useArticleStore } from '../../stores/article'
 import Pagination from '../../components/Pagination.vue'
 
 const router = useRouter()
+const articleStore = useArticleStore()
 
 const articles = ref([])
 const loading = ref(false)
@@ -110,6 +112,7 @@ async function deleteArticle(article) {
     )
     
     await api.delete(`/articles/${article.id}`)
+    articleStore.invalidateArticle(article.id)
     ElMessage.success('文章已删除')
     fetchArticles()
   } catch (error) {

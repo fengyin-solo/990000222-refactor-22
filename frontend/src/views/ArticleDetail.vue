@@ -20,10 +20,12 @@
             </div>
           </div>
         </template>
-        
+
+        <ReadingMetrics :body="article.body" />
+
         <div class="article-content" v-html="renderedContent"></div>
       </el-card>
-      
+
       <div class="back-button">
         <el-button @click="goBack">
           <el-icon><ArrowLeft /></el-icon>
@@ -31,51 +33,33 @@
         </el-button>
       </div>
     </template>
-    
-    <el-empty v-if="!loading && !article" description="文章不存在" />
+
+    <ArticleUnavailable
+      v-else-if="!loading"
+      :not-found="notFound"
+      @retry="retry"
+      @back="goBack"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft } from '@element-plus/icons-vue'
-import { marked } from 'marked'
-import api from '../api'
+import { useArticleDetail } from '../composables/useArticleDetail'
+import { renderMarkdown } from '../utils/markdown'
+import ReadingMetrics from '../components/ReadingMetrics.vue'
+import ArticleUnavailable from '../components/ArticleUnavailable.vue'
 
 const route = useRoute()
 const router = useRouter()
 
-const article = ref(null)
-const loading = ref(false)
+const { article, loading, notFound, retry } = useArticleDetail(
+  computed(() => route.params.id)
+)
 
-// Configure marked
-marked.setOptions({
-  breaks: true,
-  gfm: true
-})
-
-const renderedContent = computed(() => {
-  if (!article.value) return ''
-  return marked(article.value.body)
-})
-
-onMounted(() => {
-  fetchArticle()
-})
-
-async function fetchArticle() {
-  loading.value = true
-  try {
-    const { id } = route.params
-    const response = await api.get(`/articles/${id}`)
-    article.value = response.data
-  } catch (error) {
-    console.error('Failed to fetch article:', error)
-  } finally {
-    loading.value = false
-  }
-}
+const renderedContent = computed(() => renderMarkdown(article.value?.body))
 
 function goBack() {
   router.push('/')
@@ -128,6 +112,11 @@ function formatDate(dateStr) {
 .article-content {
   line-height: 1.8;
   font-size: 16px;
+}
+
+.article-content :deep(.article-body-empty) {
+  color: #909399;
+  font-style: italic;
 }
 
 .article-content :deep(h1) {

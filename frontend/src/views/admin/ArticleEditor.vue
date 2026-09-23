@@ -49,6 +49,7 @@
             />
           </el-tab-pane>
           <el-tab-pane label="预览" name="preview">
+            <ReadingMetrics :body="form.body" />
             <div class="preview-content" v-html="renderedContent"></div>
           </el-tab-pane>
         </el-tabs>
