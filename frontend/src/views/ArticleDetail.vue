@@ -12,6 +12,9 @@
               <span v-if="article.updated_at !== article.created_at" class="article-date">
                 更新于 {{ formatDate(article.updated_at) }}
               </span>
+              <span v-if="readingMetrics" class="article-date">
+                约 {{ readingMetrics.wordCount }} 字 · 预计阅读 {{ readingMetrics.readingMinutes }} 分钟
+              </span>
             </div>
             <div class="article-tags">
               <el-tag v-for="tag in article.tags" :key="tag" size="small">
@@ -20,10 +23,10 @@
             </div>
           </div>
         </template>
-        
-        <div class="article-content" v-html="renderedContent"></div>
+
+        <MarkdownView :body="article.body" />
       </el-card>
-      
+
       <div class="back-button">
         <el-button @click="goBack">
           <el-icon><ArrowLeft /></el-icon>
@@ -31,51 +34,33 @@
         </el-button>
       </div>
     </template>
-    
-    <el-empty v-if="!loading && !article" description="文章不存在" />
+
+    <el-empty v-if="!loading && !article" :description="emptyDescription" />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft } from '@element-plus/icons-vue'
-import { marked } from 'marked'
-import api from '../api'
+import MarkdownView from '../components/MarkdownView.vue'
+import { useArticleDetail } from '../composables/useArticleDetail'
+import { getReadingMetrics } from '../utils/markdown'
 
 const route = useRoute()
 const router = useRouter()
 
-const article = ref(null)
-const loading = ref(false)
+const { article, loading, notFound } = useArticleDetail(() => route.params.id)
 
-// Configure marked
-marked.setOptions({
-  breaks: true,
-  gfm: true
+const readingMetrics = computed(() => {
+  if (!article.value) return null
+  const metrics = getReadingMetrics(article.value.body)
+  return metrics.wordCount > 0 ? metrics : null
 })
 
-const renderedContent = computed(() => {
-  if (!article.value) return ''
-  return marked(article.value.body)
-})
-
-onMounted(() => {
-  fetchArticle()
-})
-
-async function fetchArticle() {
-  loading.value = true
-  try {
-    const { id } = route.params
-    const response = await api.get(`/articles/${id}`)
-    article.value = response.data
-  } catch (error) {
-    console.error('Failed to fetch article:', error)
-  } finally {
-    loading.value = false
-  }
-}
+const emptyDescription = computed(() =>
+  notFound.value ? '文章不存在' : '加载失败，请稍后重试'
+)
 
 function goBack() {
   router.push('/')
@@ -123,73 +108,6 @@ function formatDate(dateStr) {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-}
-
-.article-content {
-  line-height: 1.8;
-  font-size: 16px;
-}
-
-.article-content :deep(h1) {
-  font-size: 24px;
-  margin: 24px 0 16px;
-  color: #303133;
-}
-
-.article-content :deep(h2) {
-  font-size: 20px;
-  margin: 20px 0 12px;
-  color: #303133;
-}
-
-.article-content :deep(h3) {
-  font-size: 18px;
-  margin: 16px 0 8px;
-  color: #303133;
-}
-
-.article-content :deep(p) {
-  margin-bottom: 16px;
-}
-
-.article-content :deep(pre) {
-  background-color: #f5f7fa;
-  padding: 16px;
-  border-radius: 4px;
-  overflow-x: auto;
-  margin-bottom: 16px;
-}
-
-.article-content :deep(code) {
-  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-  font-size: 14px;
-}
-
-.article-content :deep(ul),
-.article-content :deep(ol) {
-  margin-bottom: 16px;
-  padding-left: 24px;
-}
-
-.article-content :deep(li) {
-  margin-bottom: 8px;
-}
-
-.article-content :deep(table) {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 16px;
-}
-
-.article-content :deep(th),
-.article-content :deep(td) {
-  border: 1px solid #dcdfe6;
-  padding: 8px 12px;
-  text-align: left;
-}
-
-.article-content :deep(th) {
-  background-color: #f5f7fa;
 }
 
 .back-button {

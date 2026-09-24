@@ -49,7 +49,9 @@
             />
           </el-tab-pane>
           <el-tab-pane label="预览" name="preview">
-            <div class="preview-content" v-html="renderedContent"></div>
+            <div class="preview-content">
+              <MarkdownView :body="form.body" />
+            </div>
           </el-tab-pane>
         </el-tabs>
       </el-form-item>
@@ -61,8 +63,8 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { marked } from 'marked'
-import api from '../../api'
+import MarkdownView from '../../components/MarkdownView.vue'
+import { fetchArticleDetail, createArticle, updateArticle } from '../../api/articles'
 
 const route = useRoute()
 const router = useRouter()
@@ -90,17 +92,6 @@ const rules = {
   ]
 }
 
-// Configure marked
-marked.setOptions({
-  breaks: true,
-  gfm: true
-})
-
-const renderedContent = computed(() => {
-  if (!form.body) return '<p>暂无内容</p>'
-  return marked(form.body)
-})
-
 onMounted(() => {
   if (isEdit.value) {
     fetchArticle()
@@ -110,8 +101,7 @@ onMounted(() => {
 async function fetchArticle() {
   loading.value = true
   try {
-    const response = await api.get(`/articles/${route.params.id}`)
-    const article = response.data
+    const article = await fetchArticleDetail(route.params.id)
     form.title = article.title
     form.body = article.body
     form.summary = article.summary
@@ -147,10 +137,10 @@ async function handleSave() {
       }
       
       if (isEdit.value) {
-        await api.put(`/articles/${route.params.id}`, articleData)
+        await updateArticle(route.params.id, articleData)
         ElMessage.success('文章已更新')
       } else {
-        await api.post('/articles', articleData)
+        await createArticle(articleData)
         ElMessage.success('文章已创建')
       }
       
@@ -201,36 +191,5 @@ function goBack() {
   min-height: 400px;
   max-height: 600px;
   overflow-y: auto;
-}
-
-.preview-content :deep(h1) {
-  font-size: 24px;
-  margin: 16px 0;
-}
-
-.preview-content :deep(h2) {
-  font-size: 20px;
-  margin: 14px 0;
-}
-
-.preview-content :deep(h3) {
-  font-size: 18px;
-  margin: 12px 0;
-}
-
-.preview-content :deep(pre) {
-  background-color: #f5f7fa;
-  padding: 12px;
-  border-radius: 4px;
-  overflow-x: auto;
-}
-
-.preview-content :deep(code) {
-  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-  font-size: 14px;
-}
-
-.preview-content :deep(p) {
-  margin-bottom: 12px;
 }
 </style>
